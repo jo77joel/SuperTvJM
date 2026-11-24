@@ -1,0 +1,119 @@
+// Super TV – activación, panel admin y descarga protegida del APK. Sin dependencias (Node 18+).
+const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
+const PORT = process.env.PORT || 3000;
+const ADMIN_PASS = process.env.ADMIN_PASS || 'cambia-esta-clave';
+const DATA = process.env.DATA_DIR || __dirname;
+const MAX_DESC = parseInt(process.env.MAX_DESCARGAS, 10) || 3;
+const MAX_APK = 500 * 1024 * 1024;
+const DB = path.join(DATA, 'data.json'), APK = path.join(DATA, 'app.apk'), APK_BUN = path.join(__dirname, 'apk', 'app.apk');
+// APK vigente: el más nuevo entre el subido desde el panel y el incluido en el proyecto
+const cur = () => { const l = [APK, APK_BUN].filter(f => fs.existsSync(f)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs); return l[0] || null; };
+fs.mkdirSync(DATA, { recursive: true });
+const sessions = new Set();
+
+const load = () => { try { return JSON.parse(fs.readFileSync(DB, 'utf8')); } catch (e) { return {}; } };
+const save = (d) => fs.writeFileSync(DB, JSON.stringify(d, null, 2));
+const send = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+const text = (res, code, s) => { res.writeHead(code, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end(s); };
+const body = (req) => new Promise((ok) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { ok(JSON.parse(b || '{}')); } catch (e) { ok({}); } }); });
+const same = (a, b) => { a = Buffer.from(String(a)); b = Buffer.from(String(b)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
+const authed = (req) => sessions.has((req.headers.authorization || '').replace('Bearer ', ''));
+const file = (res, f, type) => { try { const a = path.join(__dirname, 'public', f), b = path.join(__dirname, f); res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache' }); res.end(fs.readFileSync(fs.existsSync(a) ? a : b)); } catch (e) { res.writeHead(404); res.end('No encontrado'); } };
+const hasApk = () => !!cur();
+const isPk = (f) => { const fd = fs.openSync(f, 'r'), b = Buffer.alloc(2); fs.readSync(fd, b, 0, 2, 0); fs.closeSync(fd); return b[0] === 0x50 && b[1] === 0x4b; };
+const valid = (c) => c && !(c.expira && Date.now() > c.expira);
+
+function sendApk(req, res, c, db) {
+  const F = cur(), st = fs.statSync(F); let start = 0, end = st.size - 1, code = 200;
+  const h = { 'Content-Type': 'application/vnd.android.package-archive', 'Content-Disposition': 'attachment; filename="SuperTV.apk"', 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' };
+  const r = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
+  if (r) {
+    if (r[1] !== '') { start = +r[1]; if (r[2] !== '') end = Math.min(+r[2], end); }
+    else if (r[2] !== '') start = Math.max(0, st.size - +r[2]);
+    if (start > end) { res.writeHead(416, { 'Content-Range': 'bytes */' + st.size }); return res.end(); }
+    code = 206; h['Content-Range'] = 'bytes ' + start + '-' + end + '/' + st.size;
+  }
+  h['Content-Length'] = end - start + 1;
+  res.writeHead(code, h);
+  if (req.method === 'HEAD') return res.end();
+  fs.createReadStream(F, { start, end }).pipe(res);
+}
+
+const server = http.createServer(async (req, res) => {
+  const u = new URL(req.url, 'http://x'), p = u.pathname; let m;
+  try {
+    // ---- Cliente: consulta de su enlace ----
+    if ((m = p.match(/^\/api\/activar\/([a-f0-9]{6,32})$/))) {
+      const c = load()[m[1]];
+      if (!c) return send(res, 404, { error: 'no existe' });
+      if (!valid(c)) return send(res, 410, { error: 'vencido' });
+      if (!c.pagado) return send(res, 200, { pagado: false });
+      const max = c.max || MAX_DESC;
+      return send(res, 200, { pagado: true, nombre: c.nombre, apk: hasApk(), restantes: Math.max(0, max - (c.usos || 0)), expira: c.expira ? new Date(c.expira).toLocaleDateString('es-PE') : '' });
+    }
+    if (/^\/a\/[a-f0-9]+$/.test(p)) return file(res, 'activar.html', 'text/html; charset=utf-8');
+
+    // ---- Cliente: descarga del APK (solo si pagó) ----
+    if ((m = p.match(/^\/d\/([a-f0-9]{6,32})$/)) && (req.method === 'GET' || req.method === 'HEAD')) {
+      const db = load(), c = db[m[1]];
+      if (!valid(c)) return text(res, 404, 'Enlace vencido o no válido. Pídele a tu vendedor uno nuevo.');
+      if (!c.pagado) return text(res, 402, 'Pago pendiente. Cuando se confirme podrás descargar.');
+      if (!hasApk()) return text(res, 503, 'La app aún no está lista. Intenta más tarde.');
+      const max = c.max || MAX_DESC, reciente = c.ultimo && Date.now() - c.ultimo < 120000;
+      if (req.method === 'GET' && !reciente) {
+        if ((c.usos || 0) >= max) return text(res, 403, 'Llegaste al límite de descargas. Pídele a tu vendedor que habilite otra.');
+        c.usos = (c.usos || 0) + 1; c.ultimo = Date.now(); save(db);
+      }
+      return sendApk(req, res, c, db);
+    }
+
+    // ---- Admin ----
+    if (p === '/admin' || p === '/admin/') return file(res, 'admin.html', 'text/html; charset=utf-8');
+    if (p === '/admin/api/login' && req.method === 'POST') {
+      const b = await body(req);
+      if (!same(b.pass || '', ADMIN_PASS)) return send(res, 401, { error: 'Clave incorrecta' });
+      const t = crypto.randomBytes(24).toString('hex'); sessions.add(t); return send(res, 200, { token: t });
+    }
+    if (p.startsWith('/admin/api/')) {
+      if (!authed(req)) { req.resume(); return send(res, 401, { error: 'sesión' }); }
+      if (p === '/admin/api/apk' && req.method === 'GET') {
+        if (!hasApk()) return send(res, 200, { existe: false });
+        const s = fs.statSync(cur()); return send(res, 200, { existe: true, size: s.size, fecha: s.mtimeMs });
+      }
+      if (p === '/admin/api/apk' && req.method === 'PUT') {          // subida por partes
+        const off = +u.searchParams.get('offset') || 0, total = +u.searchParams.get('total') || 0, tmp = APK + '.tmp';
+        if (!total || total > MAX_APK) { req.resume(); return send(res, 413, { error: 'archivo muy grande' }); }
+        if (off === 0) fs.writeFileSync(tmp, '');
+        else if (!fs.existsSync(tmp) || fs.statSync(tmp).size !== off) { req.resume(); return send(res, 409, { error: 'reintenta la subida' }); }
+        const ws = fs.createWriteStream(tmp, { flags: 'r+', start: off });
+        ws.on('error', () => send(res, 500, { error: 'no se pudo guardar' }));
+        ws.on('finish', () => {
+          const sz = fs.statSync(tmp).size;
+          if (sz < total) return send(res, 200, { ok: 1, parcial: true });
+          if (sz > total || !isPk(tmp)) { fs.unlinkSync(tmp); return send(res, 400, { error: 'ese archivo no es un APK' }); }
+          fs.renameSync(tmp, APK); send(res, 200, { ok: 1, listo: true });
+        });
+        return req.pipe(ws);
+      }
+      const db = load();
+      if (p === '/admin/api/clientes' && req.method === 'GET')
+        return send(res, 200, Object.entries(db).map(([t, c]) => Object.assign({ token: t, maxEf: c.max || MAX_DESC }, c)).sort((a, b) => b.creado - a.creado));
+      if (p === '/admin/api/clientes' && req.method === 'POST') {
+        const b = await body(req), t = crypto.randomBytes(4).toString('hex'), dias = parseInt(b.dias, 10) || 30;
+        db[t] = { nombre: String(b.nombre || 'Cliente').slice(0, 60), tel: String(b.tel || '').replace(/\D/g, ''), pagado: false, usos: 0, creado: Date.now(), expira: Date.now() + dias * 864e5 };
+        save(db); return send(res, 200, { token: t });
+      }
+      if ((m = p.match(/^\/admin\/api\/clientes\/([a-f0-9]+)(\/pagar|\/descarga)?$/)) && db[m[1]]) {
+        const c = db[m[1]];
+        if (m[2] === '/pagar' && req.method === 'POST') { c.pagado = !c.pagado; save(db); return send(res, 200, { ok: 1 }); }
+        if (m[2] === '/descarga' && req.method === 'POST') { c.max = (c.max || MAX_DESC) + 1; save(db); return send(res, 200, { ok: 1 }); }
+        if (!m[2] && req.method === 'DELETE') { delete db[m[1]]; save(db); return send(res, 200, { ok: 1 }); }
+      }
+      return send(res, 404, { error: 'no existe' });
+    }
+    if (p === '/') { res.writeHead(302, { Location: '/admin/' }); return res.end(); }
+    res.writeHead(404); res.end('No encontrado');
+  } catch (e) { console.error(e); if (!res.headersSent) text(res, 500, 'Error del servidor'); }
+});
+server.requestTimeout = 0;
+server.listen(PORT, () => console.log('Super TV activo en puerto ' + PORT));

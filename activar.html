@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instala Super TV</title>
+<style>
+:root{--bg:#0f1b42;--panel:#1a2a5e;--ink:#f3f5ff;--mute:#aab5de;--gold:#ffc94d;--ink2:#2a1d00;--bad:#ff8a7a}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(120% 60% at 50% 0,#22377a 0,var(--bg) 60%) no-repeat,var(--bg);color:var(--ink);font:17px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(22px,env(safe-area-inset-top)) 18px 40px;min-height:100vh}
+main{max-width:580px;margin:0 auto}
+.brand{font-weight:800;font-size:1.1rem;letter-spacing:.02em;color:var(--gold)}
+h1{font-size:1.9rem;line-height:1.15;margin:.6rem 0 .3rem}
+p{margin:.3rem 0;color:var(--mute)}
+.tabs{display:flex;gap:8px;margin:22px 0 16px;flex-wrap:wrap}
+.tabs button{flex:1;min-width:120px;padding:12px 8px;border-radius:10px;border:2px solid var(--panel);background:var(--panel);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.tabs button[aria-selected=true]{border-color:var(--gold);color:var(--gold)}
+button:focus-visible,.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+ol{list-style:none;margin:0;padding:0;counter-reset:s}
+li{counter-increment:s;background:var(--panel);border-radius:14px;padding:16px 16px 16px 64px;margin-bottom:12px;position:relative}
+li::before{content:counter(s);position:absolute;left:16px;top:16px;width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--ink2);font-weight:800;display:grid;place-items:center}
+li b{display:block;font-size:1.05rem}
+.btn{display:inline-block;margin-top:10px;padding:14px 22px;border-radius:12px;background:var(--gold);color:var(--ink2);font-weight:800;text-decoration:none;font-size:1.05rem}
+.addr{margin-top:12px;padding:14px;border:2px solid var(--gold);border-radius:12px;background:var(--bg);color:var(--gold);font:700 1.25rem/1.3 ui-monospace,Consolas,monospace;word-break:break-all}
+.note{margin-top:14px;font-size:.92rem}
+.state{background:var(--panel);border-radius:14px;padding:20px;margin-top:22px}
+.state strong{display:block;font-size:1.15rem;margin-bottom:4px}
+.bad{color:var(--bad)}[hidden]{display:none!important}
+</style></head><body><main>
+<div class="brand">SUPER TV</div>
+<h1>Instala Super TV</h1>
+<p id="sub">Comprobando tu pago…</p>
+
+<div id="pending" class="state" hidden><strong class="bad" id="pT">Pago pendiente</strong><span id="pM">Aún no confirmamos tu pago. Cuando lo hagamos, recarga esta página.</span></div>
+
+<section id="ok" hidden>
+  <div class="tabs" role="tablist" aria-label="Tu dispositivo">
+    <button role="tab" data-k="phone" aria-selected="false">Celular o tablet</button>
+    <button role="tab" data-k="tv" aria-selected="false">Android TV / Fire TV</button>
+    <button role="tab" data-k="other" aria-selected="false">LG, Samsung, iPhone</button>
+  </div>
+
+  <div id="phone" hidden>
+    <ol>
+      <li><b>Descarga la app</b><a id="dl1" class="btn">Descargar Super TV</a></li>
+      <li><b>Pulsa Instalar</b>Al terminar la descarga, ábrela. Si Android pregunta, pulsa Configuración y activa "Permitir de esta fuente".</li>
+      <li><b>Abre Super TV</b>Ya puedes usarla.</li>
+    </ol>
+  </div>
+
+  <div id="tv" hidden>
+    <ol>
+      <li><b>Instala Downloader</b>Búscalo en la tienda de tu TV (Google Play o Amazon) e instálalo.</li>
+      <li><b>Escribe esta dirección en Downloader</b><div class="addr" id="addr"></div><a id="dl2" class="btn" style="font-size:.95rem;padding:10px 16px">Si tu TV tiene navegador, descarga aquí</a></li>
+      <li><b>Pulsa Instalar</b>Si la TV pide permiso, acéptalo (Ajustes &gt; Seguridad &gt; Fuentes desconocidas). Luego abre Super TV.</li>
+    </ol>
+  </div>
+
+  <div id="other" class="state" hidden><strong>Este dispositivo no instala APK</strong>LG, Samsung e iPhone no permiten instalar esta app. Escríbenos por WhatsApp y te indicamos la mejor opción (por ejemplo, un Fire Stick para tu TV).</div>
+
+  <p class="note" id="info"></p>
+</section>
+</main>
+<script>
+var $=function(i){return document.getElementById(i)};
+var token=(location.pathname.match(/\/a\/([a-f0-9]+)/)||[])[1]||"";
+var ua=navigator.userAgent,dlPath="/d/"+token,addr=location.host+dlPath;
+function pick(k){
+  document.querySelectorAll(".tabs button").forEach(function(b){b.setAttribute("aria-selected",b.dataset.k===k)});
+  ["phone","tv","other"].forEach(function(x){$(x).hidden=x!==k});
+}
+function guess(){
+  if(/iPhone|iPad|iPod/i.test(ua))return"other";
+  if(/AFT|Amazon|TV|BRAVIA|AndroidTV|SMART-TV|SmartTV|CrKey/i.test(ua))return"tv";
+  if(/Web0S|webOS|Tizen|NetCast/i.test(ua))return"other";
+  if(/Android/i.test(ua))return"phone";
+  return"phone";
+}
+function active(d){
+  $("ok").hidden=false;$("pending").hidden=true;
+  $("sub").textContent=(d.nombre?d.nombre+", p":"P")+"ago confirmado.";
+  if(!d.apk){pend("Estamos preparando tu descarga","Tu pago está confirmado. Recarga en unos minutos o escríbenos.");$("ok").hidden=true;return}
+  if(d.restantes<1){pend("Límite de descargas alcanzado","Pídele a tu vendedor que te habilite otra descarga.");$("ok").hidden=true;return}
+  $("dl1").href=dlPath;$("dl2").href=dlPath;$("addr").textContent=addr;
+  $("info").textContent="Descargas disponibles: "+d.restantes+(d.expira?" · Este enlace es personal y vence el "+d.expira+".":"");
+  pick(guess());
+}
+function pend(t,m){$("sub").textContent="";$("pending").hidden=false;$("pT").textContent=t;if(m)$("pM").textContent=m}
+document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){pick(b.dataset.k)}});
+if(location.search.indexOf("demo=1")>-1){token="demo1234";dlPath="/d/demo1234";addr=location.host+dlPath;active({nombre:"Cliente",apk:true,restantes:3,expira:"31/12/2026"})}
+else if(!token)pend("Enlace no válido","Pídele a tu vendedor un enlace nuevo.");
+else fetch("/api/activar/"+token,{cache:"no-store"}).then(function(r){if(!r.ok)throw r.status;return r.json()})
+ .then(function(d){d.pagado?active(d):pend("Pago pendiente")})
+ .catch(function(e){e===404||e===410?pend("Enlace vencido o no válido","Pídele a tu vendedor un enlace nuevo."):pend("No pudimos comprobar el pago","Revisa tu internet y recarga la página.")});
+</script></body></html>

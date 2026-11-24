@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Super TV Admin</title>
+<style>
+:root{--bg:#0b1430;--panel:#16224a;--ink:#f1f4ff;--mute:#9fabd6;--gold:#ffc94d;--ink2:#2a1d00;--ok:#5fe3a1;--bad:#ff8a7a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,sans-serif;padding:16px}
+main{max-width:640px;margin:0 auto}h1{font-size:1.4rem;margin:.2rem 0 1rem}h2{font-size:1rem;margin:0 0 8px}
+input,button{font:inherit;border-radius:10px;border:0;padding:12px}
+input{background:#0f1a3c;color:var(--ink);width:100%;margin-bottom:8px}
+button{background:var(--gold);color:var(--ink2);font-weight:700;cursor:pointer}
+button.s{background:#223263;color:var(--ink);padding:9px 12px;font-weight:600}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.card{background:var(--panel);border-radius:14px;padding:14px;margin-top:12px}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}.m{color:var(--mute);font-size:.9rem;word-break:break-all}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tabs{display:flex;gap:8px;margin-top:14px}.tabs button{flex:1}
+[hidden]{display:none!important}
+</style></head><body><main>
+<h1>Super TV · Administrador</h1>
+
+<div id="login" hidden><input id="pass" type="password" placeholder="Clave de administrador"><button id="go" style="width:100%">Entrar</button><p class="m" id="lerr"></p></div>
+
+<div id="app" hidden>
+  <div class="card">
+    <h2>App Super TV (APK)</h2>
+    <div class="m" id="apkInfo">Revisando…</div>
+    <input id="apkFile" type="file" style="margin-top:8px">
+    <button id="apkGo" style="width:100%">Subir APK</button>
+    <div class="m" id="apkMsg"></div>
+  </div>
+  <div class="card">
+    <h2>Nuevo cliente</h2>
+    <input id="nombre" placeholder="Nombre del cliente">
+    <div class="row"><input id="tel" inputmode="tel" placeholder="WhatsApp (51999...)"><input id="dias" inputmode="numeric" placeholder="Días de acceso" value="30"></div>
+    <button id="add" style="width:100%">Crear enlace</button>
+  </div>
+  <div class="tabs"><button class="s" id="fAll">Todos</button><button class="s" id="fPend">Por confirmar</button></div>
+  <div id="list"></div>
+</div>
+
+<script>
+var tk=null,filter=false,$=function(i){return document.getElementById(i)};
+try{tk=localStorage.getItem('stk')}catch(e){}
+function api(m,u,b){return fetch('/admin/api/'+u,{method:m,headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:b?JSON.stringify(b):undefined}).then(function(r){if(r.status===401){logout();throw 0}return r.json()})}
+function logout(){tk=null;try{localStorage.removeItem('stk')}catch(e){}$('app').hidden=true;$('login').hidden=false}
+function show(){$('login').hidden=true;$('app').hidden=false;apkInfo();refresh()}
+$('go').onclick=function(){fetch('/admin/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pass:$('pass').value})}).then(function(r){return r.json()}).then(function(d){if(d.token){tk=d.token;try{localStorage.setItem('stk',tk)}catch(e){}show()}else $('lerr').textContent=d.error||'Error'})};
+
+function apkInfo(){api('GET','apk').then(function(d){$('apkInfo').textContent=d.existe?'APK guardado: '+(d.size/1048576).toFixed(1)+' MB · '+new Date(d.fecha).toLocaleString('es-PE'):'Aún no subes el APK de Super TV.'})}
+$('apkGo').onclick=function(){
+  var f=$('apkFile').files[0];if(!f){$('apkMsg').textContent='Elige primero el archivo APK.';return}
+  var CH=8*1048576,o=0,btn=$('apkGo');btn.disabled=true;
+  function next(){
+    fetch('/admin/api/apk?offset='+o+'&total='+f.size,{method:'PUT',headers:{'Authorization':'Bearer '+tk},body:f.slice(o,o+CH)})
+    .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Error');return d})})
+    .then(function(d){o+=CH;if(d.listo){$('apkMsg').textContent='Listo, APK subido.';btn.disabled=false;apkInfo()}else{$('apkMsg').textContent='Subiendo… '+Math.min(99,Math.round(o/f.size*100))+'%';next()}})
+    .catch(function(e){$('apkMsg').textContent='Falló: '+e.message+'. Intenta de nuevo.';btn.disabled=false})
+  }
+  $('apkMsg').textContent='Subiendo… 0%';next();
+};
+
+$('add').onclick=function(){api('POST','clientes',{nombre:$('nombre').value,tel:$('tel').value,dias:$('dias').value}).then(function(){$('nombre').value='';$('tel').value='';refresh()})};
+$('fAll').onclick=function(){filter=false;refresh()};$('fPend').onclick=function(){filter=true;refresh()};
+function link(t){return location.origin+'/a/'+t}
+function btn(txt,fn){var b=document.createElement('button');b.className='s';b.textContent=txt;b.onclick=fn;return b}
+function refresh(){api('GET','clientes').then(function(rows){
+  var L=$('list');L.textContent='';
+  rows.filter(function(c){return !filter||!c.pagado}).forEach(function(c){
+    var d=document.createElement('div');d.className='card';
+    var t=document.createElement('div');t.className='top';
+    var n=document.createElement('strong');n.textContent=c.nombre;
+    var s=document.createElement('span');s.className=c.pagado?'ok':'bad';s.textContent=c.pagado?'Pagado':'Pendiente';
+    t.appendChild(n);t.appendChild(s);d.appendChild(t);
+    var m=document.createElement('div');m.className='m';m.textContent=link(c.token)+' · descargas '+(c.usos||0)+'/'+c.maxEf+' · vence '+new Date(c.expira).toLocaleDateString('es-PE');d.appendChild(m);
+    var a=document.createElement('div');a.className='acts';
+    a.appendChild(btn(c.pagado?'Quitar pago':'Confirmar pago',function(){api('POST','clientes/'+c.token+'/pagar').then(refresh)}));
+    var msg='Hola '+c.nombre+', aquí está tu acceso a Super TV: '+link(c.token);
+    a.appendChild(btn('WhatsApp',function(){location.href='https://wa.me/'+c.tel+'?text='+encodeURIComponent(msg)}));
+    a.appendChild(btn('Copiar',function(){try{navigator.clipboard.writeText(link(c.token))}catch(e){}this.textContent='Copiado'}));
+    a.appendChild(btn('+1 descarga',function(){api('POST','clientes/'+c.token+'/descarga').then(refresh)}));
+    a.appendChild(btn('Borrar',function(){if(confirm('¿Borrar a '+c.nombre+'?'))api('DELETE','clientes/'+c.token).then(refresh)}));
+    d.appendChild(a);L.appendChild(d)})})}
+if(tk)show();else $('login').hidden=false;
+</script></main></body></html>
