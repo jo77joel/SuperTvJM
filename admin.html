@@ -48,7 +48,7 @@ function logout(){tk=null;try{localStorage.removeItem('stk')}catch(e){}$('app').
 function show(){$('login').hidden=true;$('app').hidden=false;apkInfo();refresh()}
 $('go').onclick=function(){fetch('/admin/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pass:$('pass').value})}).then(function(r){return r.json()}).then(function(d){if(d.token){tk=d.token;try{localStorage.setItem('stk',tk)}catch(e){}show()}else $('lerr').textContent=d.error||'Error'})};
 
-function apkInfo(){api('GET','apk').then(function(d){$('apkInfo').textContent=d.existe?'APK guardado: '+(d.size/1048576).toFixed(1)+' MB · '+new Date(d.fecha).toLocaleString('es-PE'):'Aún no subes el APK de Super TV.'})}
+function apkInfo(){api('GET','apk').then(function(d){$('apkInfo').textContent=d.existe?(d.enlace?'APK enlazado desde internet (listo).':'APK guardado: '+(d.size/1048576).toFixed(1)+' MB · '+new Date(d.fecha).toLocaleString('es-PE')):'Aún no subes el APK de Super TV.'})}
 $('apkGo').onclick=function(){
   var f=$('apkFile').files[0];if(!f){$('apkMsg').textContent='Elige primero el archivo APK.';return}
   var CH=8*1048576,o=0,btn=$('apkGo');btn.disabled=true;

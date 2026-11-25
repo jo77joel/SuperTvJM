@@ -11,20 +11,53 @@ const cur = () => { const l = [APK, APK_BUN].filter(f => fs.existsSync(f)).sort(
 fs.mkdirSync(DATA, { recursive: true });
 const sessions = new Set();
 
-const load = () => { try { return JSON.parse(fs.readFileSync(DB, 'utf8')); } catch (e) { return {}; } };
-const save = (d) => fs.writeFileSync(DB, JSON.stringify(d, null, 2));
+// --- Datos: en memoria + archivo + (opcional) Upstash Redis gratis para que no se pierdan en Render gratis ---
+const RURL = process.env.UPSTASH_URL, RTOK = process.env.UPSTASH_TOKEN, APK_URL = process.env.APK_URL;
+const redis = (cmd) => fetch(RURL, { method: 'POST', headers: { Authorization: 'Bearer ' + RTOK, 'Content-Type': 'application/json' }, body: JSON.stringify(cmd) })
+  .then(r => r.json()).then(j => { if (j.error) throw new Error(j.error); return j.result; });
+let cache = {}, timer = null, dirty = false;
+const load = () => cache;
+async function flush() {
+  timer = null; if (!dirty) return; dirty = false;
+  try { await redis(['SET', 'stv:db', JSON.stringify(cache)]); } catch (e) { console.error('Redis:', e.message); dirty = true; timer = setTimeout(flush, 5000); }
+}
+const save = (d) => { cache = d; try { fs.writeFileSync(DB, JSON.stringify(d, null, 2)); } catch (e) {} if (RURL) { dirty = true; if (!timer) timer = setTimeout(flush, 300); } };
+async function init() {
+  if (RURL) {
+    for (let i = 0; i < 5; i++) {
+      try { const v = await redis(['GET', 'stv:db']); cache = v ? JSON.parse(v) : {}; return; }
+      catch (e) { console.error('Redis:', e.message); await new Promise(r => setTimeout(r, 2000)); }
+    }
+    console.error('No se pudo leer Redis; se detiene para no borrar tus datos.'); process.exit(1);
+  }
+  try { cache = JSON.parse(fs.readFileSync(DB, 'utf8')); } catch (e) { cache = {}; }
+}
+// --- APK alojado fuera (GitHub Releases): el servidor lo entrega sin mostrar el enlace real ---
+async function proxyApk(req, res) {
+  try {
+    const h = req.headers.range ? { Range: req.headers.range } : {};
+    const r = await fetch(APK_URL, { method: req.method === 'HEAD' ? 'HEAD' : 'GET', headers: h, redirect: 'follow' });
+    if (!r.ok) return text(res, 502, 'No se pudo obtener la app. Intenta más tarde.');
+    const o = { 'Content-Type': 'application/vnd.android.package-archive', 'Content-Disposition': 'attachment; filename="SuperTV.apk"', 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' };
+    ['content-length', 'content-range'].forEach(k => { const v = r.headers.get(k); if (v) o[k] = v; });
+    res.writeHead(r.status, o);
+    if (req.method === 'HEAD' || !r.body) return res.end();
+    require('stream').Readable.fromWeb(r.body).on('error', () => res.destroy()).pipe(res);
+  } catch (e) { if (!res.headersSent) text(res, 502, 'No se pudo obtener la app. Intenta más tarde.'); else res.destroy(); }
+}
 const send = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
 const text = (res, code, s) => { res.writeHead(code, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end(s); };
 const body = (req) => new Promise((ok) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { ok(JSON.parse(b || '{}')); } catch (e) { ok({}); } }); });
 const same = (a, b) => { a = Buffer.from(String(a)); b = Buffer.from(String(b)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
 const authed = (req) => sessions.has((req.headers.authorization || '').replace('Bearer ', ''));
 const file = (res, f, type) => { try { const a = path.join(__dirname, 'public', f), b = path.join(__dirname, f); res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache' }); res.end(fs.readFileSync(fs.existsSync(a) ? a : b)); } catch (e) { res.writeHead(404); res.end('No encontrado'); } };
-const hasApk = () => !!cur();
+const hasApk = () => !!cur() || !!APK_URL;
 const isPk = (f) => { const fd = fs.openSync(f, 'r'), b = Buffer.alloc(2); fs.readSync(fd, b, 0, 2, 0); fs.closeSync(fd); return b[0] === 0x50 && b[1] === 0x4b; };
 const valid = (c) => c && !(c.expira && Date.now() > c.expira);
 
 function sendApk(req, res, c, db) {
-  const F = cur(), st = fs.statSync(F); let start = 0, end = st.size - 1, code = 200;
+  const F = cur(); if (!F) return proxyApk(req, res);
+  const st = fs.statSync(F); let start = 0, end = st.size - 1, code = 200;
   const h = { 'Content-Type': 'application/vnd.android.package-archive', 'Content-Disposition': 'attachment; filename="SuperTV.apk"', 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' };
   const r = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
   if (r) {
@@ -77,7 +110,7 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/admin/api/')) {
       if (!authed(req)) { req.resume(); return send(res, 401, { error: 'sesión' }); }
       if (p === '/admin/api/apk' && req.method === 'GET') {
-        if (!hasApk()) return send(res, 200, { existe: false });
+        if (!cur()) return send(res, 200, { existe: !!APK_URL, enlace: !!APK_URL });
         const s = fs.statSync(cur()); return send(res, 200, { existe: true, size: s.size, fecha: s.mtimeMs });
       }
       if (p === '/admin/api/apk' && req.method === 'PUT') {          // subida por partes
@@ -116,4 +149,4 @@ const server = http.createServer(async (req, res) => {
   } catch (e) { console.error(e); if (!res.headersSent) text(res, 500, 'Error del servidor'); }
 });
 server.requestTimeout = 0;
-server.listen(PORT, () => console.log('Super TV activo en puerto ' + PORT));
+init().then(() => server.listen(PORT, () => console.log('Super TV activo en puerto ' + PORT)));
