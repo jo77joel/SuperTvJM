@@ -33,10 +33,10 @@ button.s{background:#223263;color:var(--ink);padding:9px 12px;font-weight:600}
   <div class="card">
     <h2>Nuevo cliente</h2>
     <input id="nombre" placeholder="Nombre del cliente">
-    <div class="row"><input id="tel" inputmode="tel" placeholder="WhatsApp (51999...)"><input id="dias" inputmode="numeric" placeholder="Días de acceso" value="30"></div>
+    <div class="row"><input id="tel" inputmode="tel" placeholder="WhatsApp (51999...)"><input id="dias" inputmode="numeric" placeholder="Días" value="30"><input id="max" inputmode="numeric" placeholder="Descargas" value="2"></div>
     <button id="add" style="width:100%">Crear enlace</button>
   </div>
-  <div class="tabs"><button class="s" id="fAll">Todos</button><button class="s" id="fPend">Por confirmar</button></div>
+  <div class="m" id="stats" style="margin-top:14px"></div><div class="tabs"><button class="s" id="fAll">Todos</button><button class="s" id="fPend">Por confirmar</button><button class="s" id="rf">Actualizar</button></div>
   <div id="list"></div>
 </div>
 
@@ -61,26 +61,29 @@ $('apkGo').onclick=function(){
   $('apkMsg').textContent='Subiendo… 0%';next();
 };
 
-$('add').onclick=function(){api('POST','clientes',{nombre:$('nombre').value,tel:$('tel').value,dias:$('dias').value}).then(function(){$('nombre').value='';$('tel').value='';refresh()})};
-$('fAll').onclick=function(){filter=false;refresh()};$('fPend').onclick=function(){filter=true;refresh()};
+$('add').onclick=function(){api('POST','clientes',{nombre:$('nombre').value,tel:$('tel').value,dias:$('dias').value,max:$('max').value}).then(function(){$('nombre').value='';$('tel').value='';refresh()})};
+$('rf').onclick=function(){refresh()};$('fAll').onclick=function(){filter=false;refresh()};$('fPend').onclick=function(){filter=true;refresh()};
+function ago(t){var s=Math.round((Date.now()-t)/1000);return s<60?'hace unos segundos':s<3600?'hace '+Math.round(s/60)+' min':s<86400?'hace '+Math.round(s/3600)+' h':new Date(t).toLocaleDateString('es-PE')}
 function link(t){return location.origin+'/a/'+t}
 function btn(txt,fn){var b=document.createElement('button');b.className='s';b.textContent=txt;b.onclick=fn;return b}
 function refresh(){api('GET','clientes').then(function(rows){
-  var L=$('list');L.textContent='';
+  var L=$('list');L.textContent='';$('stats').textContent=rows.length+' clientes · '+rows.filter(function(c){return c.pagado}).length+' pagados · '+rows.reduce(function(s,c){return s+(c.usos||0)},0)+' descargas · '+rows.filter(function(c){return c.inst&&c.inst.length}).length+' instaladas';
   rows.filter(function(c){return !filter||!c.pagado}).forEach(function(c){
     var d=document.createElement('div');d.className='card';
     var t=document.createElement('div');t.className='top';
     var n=document.createElement('strong');n.textContent=c.nombre;
     var s=document.createElement('span');s.className=c.pagado?'ok':'bad';s.textContent=c.pagado?'Pagado':'Pendiente';
     t.appendChild(n);t.appendChild(s);d.appendChild(t);
-    var m=document.createElement('div');m.className='m';m.textContent=link(c.token)+' · descargas '+(c.usos||0)+'/'+c.maxEf+' · vence '+new Date(c.expira).toLocaleDateString('es-PE');d.appendChild(m);
+    var m=document.createElement('div');m.className='m';m.textContent=link(c.token)+' · vence '+new Date(c.expira).toLocaleDateString('es-PE');d.appendChild(m);var g=document.createElement('div');g.style.marginTop='6px';g.className=(c.usos||0)>0?'ok':'m';g.textContent='Descargas: '+(c.usos||0)+'/'+c.maxEf+(c.ultimo?' · última '+ago(c.ultimo)+(c.disp?' ('+c.disp+')':''):' · aún no descarga');d.appendChild(g);var iv=c.inst||[],ins=document.createElement('div');ins.style.marginTop='4px';ins.className=iv.length?'ok':'m';ins.textContent=iv.length?'Instalada ✓ en '+iv.length+' dispositivo(s): '+iv.map(function(x){return (x.modelo||'Dispositivo')+' ('+ago(x.visto||x.fecha)+')'}).join(', '):'Aún no activada en la app';if(iv.length)d.appendChild(ins);if(c.confirmo){var cf=document.createElement('div');cf.className='ok';cf.style.marginTop='4px';cf.textContent='El cliente confirma que la instaló ✓ ('+ago(c.confirmo)+(c.confDisp?' · '+c.confDisp:'')+')';d.appendChild(cf)}
     var a=document.createElement('div');a.className='acts';
     a.appendChild(btn(c.pagado?'Quitar pago':'Confirmar pago',function(){api('POST','clientes/'+c.token+'/pagar').then(refresh)}));
     var msg='Hola '+c.nombre+', aquí está tu acceso a Super TV: '+link(c.token);
     a.appendChild(btn('WhatsApp',function(){location.href='https://wa.me/'+c.tel+'?text='+encodeURIComponent(msg)}));
     a.appendChild(btn('Copiar',function(){try{navigator.clipboard.writeText(link(c.token))}catch(e){}this.textContent='Copiado'}));
     a.appendChild(btn('+1 descarga',function(){api('POST','clientes/'+c.token+'/descarga').then(refresh)}));
+    if(iv.length)a.appendChild(btn('Reiniciar dispositivos',function(){if(confirm('¿Permitir instalar en otro dispositivo?'))api('POST','clientes/'+c.token+'/reset').then(refresh)}));
     a.appendChild(btn('Borrar',function(){if(confirm('¿Borrar a '+c.nombre+'?'))api('DELETE','clientes/'+c.token).then(refresh)}));
     d.appendChild(a);L.appendChild(d)})})}
+setInterval(function(){if(tk&&!document.hidden)refresh()},8000);document.addEventListener('visibilitychange',function(){if(tk&&!document.hidden)refresh()});
 if(tk)show();else $('login').hidden=false;
 </script></main></body></html>

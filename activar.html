@@ -3,91 +3,162 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Instala Super TV</title>
 <style>
-:root{--bg:#0f1b42;--panel:#1a2a5e;--ink:#f3f5ff;--mute:#aab5de;--gold:#ffc94d;--ink2:#2a1d00;--bad:#ff8a7a}
+:root{--bg:#0b1533;--card:#15244f;--line:#2a3b72;--ink:#f4f6ff;--mute:#a9b6e0;--gold:#ffc94d;--ink2:#2b1d00;--ok:#4be0a0;--bad:#ff8a7a}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(120% 60% at 50% 0,#22377a 0,var(--bg) 60%) no-repeat,var(--bg);color:var(--ink);font:17px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:max(22px,env(safe-area-inset-top)) 18px 40px;min-height:100vh}
-main{max-width:580px;margin:0 auto}
-.brand{font-weight:800;font-size:1.1rem;letter-spacing:.02em;color:var(--gold)}
-h1{font-size:1.9rem;line-height:1.15;margin:.6rem 0 .3rem}
+body{margin:0;color:var(--ink);font:17px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:radial-gradient(90% 50% at 50% -5%,#2b4390 0,transparent 70%),var(--bg);min-height:100vh;padding:max(16px,env(safe-area-inset-top)) 16px 40px}
+.wrap{max-width:600px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.04em}
+.logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#ffd978,#ff9f1c);display:grid;place-items:center}
+.sec{font-size:.8rem;color:var(--mute)}
+.hero{background:linear-gradient(160deg,#1c3170,#14224d);border:1px solid var(--line);border-radius:20px;padding:22px}
+.badge{display:inline-block;background:rgba(75,224,160,.15);color:var(--ok);font-weight:700;font-size:.85rem;padding:5px 12px;border-radius:99px}
+h1{font-size:1.75rem;line-height:1.15;margin:.7rem 0 .3rem}
 p{margin:.3rem 0;color:var(--mute)}
-.tabs{display:flex;gap:8px;margin:22px 0 16px;flex-wrap:wrap}
-.tabs button{flex:1;min-width:120px;padding:12px 8px;border-radius:10px;border:2px solid var(--panel);background:var(--panel);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
-.tabs button[aria-selected=true]{border-color:var(--gold);color:var(--gold)}
-button:focus-visible,.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
-ol{list-style:none;margin:0;padding:0;counter-reset:s}
-li{counter-increment:s;background:var(--panel);border-radius:14px;padding:16px 16px 16px 64px;margin-bottom:12px;position:relative}
-li::before{content:counter(s);position:absolute;left:16px;top:16px;width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--ink2);font-weight:800;display:grid;place-items:center}
-li b{display:block;font-size:1.05rem}
-.btn{display:inline-block;margin-top:10px;padding:14px 22px;border-radius:12px;background:var(--gold);color:var(--ink2);font-weight:800;text-decoration:none;font-size:1.05rem}
-.addr{margin-top:12px;padding:14px;border:2px solid var(--gold);border-radius:12px;background:var(--bg);color:var(--gold);font:700 1.25rem/1.3 ui-monospace,Consolas,monospace;word-break:break-all}
-.note{margin-top:14px;font-size:.92rem}
-.state{background:var(--panel);border-radius:14px;padding:20px;margin-top:22px}
-.state strong{display:block;font-size:1.15rem;margin-bottom:4px}
-.bad{color:var(--bad)}[hidden]{display:none!important}
-</style></head><body><main>
-<div class="brand">SUPER TV</div>
-<h1>Instala Super TV</h1>
-<p id="sub">Comprobando tu pago…</p>
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chips span{background:rgba(255,255,255,.07);border-radius:99px;padding:5px 12px;font-size:.85rem}
+.tabs{display:flex;gap:8px;margin:20px 0 14px}
+.tabs button{flex:1;padding:12px 6px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:.95rem;font-weight:600;cursor:pointer}
+.tabs button[aria-selected=true]{border-color:var(--gold);color:var(--gold);background:#1b2d63}
+button:focus-visible,.btn:focus-visible,summary:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.step{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 16px 16px 66px;margin-bottom:12px;transition:.3s}
+.step .n{position:absolute;left:16px;top:16px;width:36px;height:36px;border-radius:50%;background:var(--line);color:var(--ink);font-weight:800;display:grid;place-items:center}
+.step.now{border-color:var(--gold)}.step.now .n{background:var(--gold);color:var(--ink2)}
+.step.done .n{background:var(--ok);color:#06281a}.step.done{opacity:.8}
+.step b{display:block;font-size:1.05rem}
+.btn{display:block;text-align:center;margin-top:12px;padding:16px 20px;border-radius:14px;background:linear-gradient(180deg,#ffd978,#ffb21f);color:var(--ink2);font-weight:800;font-size:1.1rem;text-decoration:none;border:0;width:100%;cursor:pointer;font-family:inherit;animation:pulse 2s infinite}
+.btn.sm{font-size:.95rem;padding:11px 16px;animation:none;background:#223263;color:var(--ink)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,201,77,.5)}70%{box-shadow:0 0 0 14px rgba(255,201,77,0)}100%{box-shadow:0 0 0 0 rgba(255,201,77,0)}}
+@media (prefers-reduced-motion:reduce){.btn{animation:none}}
+.hint{margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(255,201,77,.1);color:#ffe6a3;font-size:.92rem}
+.addr{margin-top:12px;padding:14px;border:2px dashed var(--gold);border-radius:12px;background:var(--bg);color:var(--gold);font:700 1.2rem/1.3 ui-monospace,Consolas,monospace;word-break:break-all;text-align:center}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:16px}
+.card h2{font-size:1.05rem;margin:0 0 10px}
+.vid{position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#000}
+.vid iframe,.vid video{position:absolute;inset:0;width:100%;height:100%;border:0}
+details{border-top:1px solid var(--line);padding:10px 0}details:first-of-type{border:0}
+summary{cursor:pointer;font-weight:600;padding:4px 0}
+details p{margin:6px 0 2px}
+.ios{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.ios .btn{width:auto;margin:0;animation:none;padding:10px 14px;font-size:.9rem}
+.state{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-top:20px}
+.state strong{display:block;font-size:1.15rem;margin-bottom:4px}.bad{color:var(--bad)}
+.foot{text-align:center;font-size:.8rem;color:var(--mute);margin-top:22px}
+[hidden]{display:none!important}
 
-<div id="pending" class="state" hidden><strong class="bad" id="pT">Pago pendiente</strong><span id="pM">Aún no confirmamos tu pago. Cuando lo hagamos, recarga esta página.</span></div>
+.mock{margin-top:12px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#fff;color:#202124}
+.mk-h{display:flex;align-items:center;gap:8px;padding:10px 12px;font-weight:700;font-size:.95rem;background:#f1f3f4}
+.mk-s{margin:10px 12px;padding:9px 14px;border-radius:99px;background:#e8eaed;font-size:.95rem;display:flex;gap:8px;align-items:center}
+.mk-r{display:flex;align-items:center;gap:12px;padding:10px 12px 14px}
+.mk-r small{color:#5f6368;display:block}
+.mk-i{margin-left:auto;background:#01875f;color:#fff;border-radius:99px;padding:7px 16px;font-weight:700;font-size:.85rem}
+.dl-ic{width:46px;height:46px;flex:none}
+.dlh{background:#f47721;color:#fff;font-weight:800;font-size:1.35rem;text-align:center;padding:12px 0 10px}
+.dlb{background:#f47721;padding:2px 12px 14px;position:relative}
+.dlf{background:#fff;border-radius:99px;padding:11px 14px;color:#202124;font:600 .85rem ui-monospace,Consolas,monospace;word-break:break-all;box-shadow:0 0 0 4px var(--gold),0 0 0 8px rgba(255,201,77,.35);animation:ring 1.6s infinite}
+.dlf i{display:inline-block;width:2px;height:1em;background:#202124;vertical-align:-2px;animation:bl 1s steps(1) infinite}
+@keyframes ring{50%{box-shadow:0 0 0 4px var(--gold),0 0 0 14px rgba(255,201,77,0)}}@keyframes bl{50%{opacity:0}}
+.pt{color:var(--gold);font-weight:800;margin:8px 0 0;font-size:.95rem}
+.safe{display:flex;gap:12px;align-items:flex-start}.safe svg{flex:none}
+@media (prefers-reduced-motion:reduce){.dlf,.dlf i{animation:none}}
+</style></head><body><svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="gp" viewBox="0 0 24 24"><path d="M3 2v20l9-10z" fill="#00a0ff"/><path d="M3 2l9 10 4-4z" fill="#00e676"/><path d="M3 22l9-10 4 4z" fill="#ff3a44"/><path d="M12 12l4-4 5 4-5 4z" fill="#ffc400"/></symbol>
+<symbol id="dl" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#f47721"/><path d="M24 9v18m0 0l-8-8m8 8l8-8M12 35h24" stroke="#fff" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="sh" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.4 9.3-8 11-4.6-1.7-8-6-8-11V5z" fill="#4be0a0"/><path d="M8 12l3 3 5-6" stroke="#06281a" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</defs></svg><div class="wrap">
+<div class="top"><div class="brand"><div class="logo"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 4v16l13-8z" fill="#2b1d00"/></svg></div>SUPER TV</div><div class="sec">&#128274; Enlace personal y seguro</div></div>
+
+<div id="load" class="state">Comprobando tu pago…</div>
+<div id="pending" class="state" hidden><strong class="bad" id="pT"></strong><span id="pM"></span><a id="pW" class="btn sm" hidden target="_blank" rel="noopener">Escribir a soporte</a></div>
 
 <section id="ok" hidden>
+  <div class="hero"><span class="badge">&#10003; Pago confirmado</span>
+    <h1 id="hi">Tu acceso está listo</h1>
+    <p>Instálala en menos de 2 minutos. Sigue los pasos en el orden que ves.</p>
+    <div class="chips"><span id="c1"></span><span id="c2"></span></div></div>
+
+  <div id="inst" class="state" hidden style="border-color:var(--ok);margin:16px 0 0"><strong style="color:var(--ok)">&#10003; ¡Instalación registrada!</strong>Ya puedes abrir Super TV y disfrutarla.</div>
+  <div class="card" id="codeCard" hidden><h2>Tu código de activación</h2><p>Cuando abras Super TV por primera vez, escribe este código:</p><div class="addr" id="cod"></div></div>
+
   <div class="tabs" role="tablist" aria-label="Tu dispositivo">
-    <button role="tab" data-k="phone" aria-selected="false">Celular o tablet</button>
-    <button role="tab" data-k="tv" aria-selected="false">Android TV / Fire TV</button>
-    <button role="tab" data-k="other" aria-selected="false">LG, Samsung, iPhone</button>
+    <button role="tab" data-k="phone">Celular</button><button role="tab" data-k="tv">Android TV</button><button role="tab" data-k="other">Otros</button>
   </div>
 
   <div id="phone" hidden>
-    <ol>
-      <li><b>Descarga la app</b><a id="dl1" class="btn">Descargar Super TV</a></li>
-      <li><b>Pulsa Instalar</b>Al terminar la descarga, ábrela. Si Android pregunta, pulsa Configuración y activa "Permitir de esta fuente".</li>
-      <li><b>Abre Super TV</b>Ya puedes usarla.</li>
-    </ol>
+    <div class="step now" id="p1"><span class="n">1</span><b>Descarga la app</b>Toca el botón. La descarga empieza sola.
+      <a id="dl1" class="btn">Descargar Super TV</a><div class="hint" id="h1" hidden>Descargando… Cuando termine, toca el aviso "Descarga completa" o abre la app Archivos &gt; Descargas.</div></div>
+    <div class="step" id="p2"><span class="n">2</span><b>Pulsa Instalar</b>Si Android avisa, toca <b style="display:inline">Configuración</b> y activa "Permitir de esta fuente". Vuelve y pulsa Instalar.</div>
+    <div class="step" id="p3"><span class="n">3</span><b>Abre Super TV</b>Listo. Ya puedes usarla.</div>
   </div>
 
   <div id="tv" hidden>
-    <ol>
-      <li><b>Instala Downloader</b>Búscalo en la tienda de tu TV (Google Play o Amazon) e instálalo.</li>
-      <li><b>Escribe esta dirección en Downloader</b><div class="addr" id="addr"></div><a id="dl2" class="btn" style="font-size:.95rem;padding:10px 16px">Si tu TV tiene navegador, descarga aquí</a></li>
-      <li><b>Pulsa Instalar</b>Si la TV pide permiso, acéptalo (Ajustes &gt; Seguridad &gt; Fuentes desconocidas). Luego abre Super TV.</li>
-    </ol>
+    <div class="step now"><span class="n">1</span><b>Abre la tienda de tu TV y busca Downloader</b>
+      <div class="mock"><div class="mk-h"><svg width="22" height="22"><use href="#gp"/></svg>Google Play</div>
+        <div class="mk-s">&#128269; Downloader</div>
+        <div class="mk-r"><svg class="dl-ic"><use href="#dl"/></svg><div><b>Downloader</b><small>AFTVnews.com &middot; Gratis</small></div><span class="mk-i">Instalar</span></div></div>
+      <p class="pt">&#9757; Busca el ícono naranja y pulsa Instalar.</p>
+      <p style="font-size:.9rem">En Fire TV se busca igual, en la tienda de Amazon. Es gratis.</p></div>
+    <div class="step now"><span class="n">2</span><b>Abre Downloader y escribe tu dirección</b>
+      <div class="mock"><div class="dlh">Downloader</div><div class="dlb"><div class="dlf" id="addr2"></div></div></div>
+      <p class="pt">&#9757; Escríbela en la barra blanca de arriba.</p>
+      <div class="addr" id="addr"></div>
+      <button class="btn sm" id="cp" type="button">Copiar dirección</button>
+      <a id="dl2" class="btn sm" style="margin-top:8px">Mi TV tiene navegador: descargar aquí</a></div>
+    <div class="step"><span class="n">3</span><b>Pulsa Ir e Instalar</b>Si la TV pide permiso: Ajustes &gt; Seguridad &gt; Fuentes desconocidas &gt; activa Downloader. Luego abre Super TV.</div>
   </div>
 
-  <div id="other" class="state" hidden><strong>Este dispositivo no instala APK</strong>LG, Samsung e iPhone no permiten instalar esta app. Escríbenos por WhatsApp y te indicamos la mejor opción (por ejemplo, un Fire Stick para tu TV).</div>
+  <div id="other" class="card" hidden><h2>Este dispositivo aún no es compatible</h2><p>LG y Samsung no instalan archivos APK. Escríbenos y te recomendamos la mejor opción para tu TV.</p><a class="btn sm wa" target="_blank" rel="noopener" style="margin-top:10px">Hablar por WhatsApp</a></div>
 
-  <p class="note" id="info"></p>
-</section>
-</main>
+  <div class="card" id="doneCard"><h2>¿Ya la instalaste?</h2><p>Avísanos para dejar tu instalación registrada.</p><button class="btn sm" id="done" type="button" style="margin-top:10px">Sí, ya la instalé &#10003;</button></div>
+
+  <div class="card ios"><div><b>iPhone / iPad</b><p style="margin:0">Próximamente</p></div><a class="btn wa" target="_blank" rel="noopener" data-m="Hola, quiero Super TV para iPhone. Avísenme cuando esté lista.">Avísame</a></div>
+
+  <div class="card safe"><svg width="34" height="34"><use href="#sh"/></svg><div><b>Instalación segura</b><p style="margin:2px 0 0">Downloader es una app gratuita de las tiendas oficiales y solo descarga tu archivo desde tu enlace personal. Por esta página nunca te pedimos contraseñas ni datos de tarjeta.</p></div></div>
+
+  <div class="card" id="vcard" hidden><h2>Mira cómo se instala (30 seg)</h2><div class="vid" id="vid"></div></div>
+
+  <div class="card"><h2>Preguntas frecuentes</h2>
+    <details><summary>Android dice "bloqueado por seguridad"</summary><p>Es normal con apps fuera de la Play Store. Toca Configuración, activa "Permitir de esta fuente" y vuelve a pulsar Instalar.</p></details>
+    <details><summary>La descarga no empieza</summary><p>Revisa tu internet y vuelve a tocar el botón. Si dice que llegaste al límite, escríbenos y te habilitamos otra descarga.</p></details>
+    <details><summary>¿Puedo compartir mi enlace?</summary><p>No. Es personal, tiene límite de descargas y vence en la fecha indicada.</p></details>
+    <details><summary>Cambié de TV o celular</summary><p>Escríbenos y te habilitamos otra descarga con el mismo enlace.</p></details>
+    <a class="btn sm wa" target="_blank" rel="noopener" style="margin-top:12px">¿Necesitas ayuda? Escríbenos</a></div>
+  <div class="foot" id="foot"></div>
+</section></div>
 <script>
-var $=function(i){return document.getElementById(i)};
-var token=(location.pathname.match(/\/a\/([a-f0-9]+)/)||[])[1]||"";
-var ua=navigator.userAgent,dlPath="/d/"+token,addr=location.host+dlPath;
-function pick(k){
-  document.querySelectorAll(".tabs button").forEach(function(b){b.setAttribute("aria-selected",b.dataset.k===k)});
-  ["phone","tv","other"].forEach(function(x){$(x).hidden=x!==k});
-}
-function guess(){
-  if(/iPhone|iPad|iPod/i.test(ua))return"other";
-  if(/AFT|Amazon|TV|BRAVIA|AndroidTV|SMART-TV|SmartTV|CrKey/i.test(ua))return"tv";
-  if(/Web0S|webOS|Tizen|NetCast/i.test(ua))return"other";
-  if(/Android/i.test(ua))return"phone";
-  return"phone";
-}
+var CFG={SOPORTE:"",VIDEO:"",APP_CODIGO:false}; // APP_CODIGO: ponlo en true cuando la app Super TV ya pida el código al abrirse. SOPORTE: tu WhatsApp con código de país, ej. 51999999999 | VIDEO: enlace de YouTube o de un .mp4
+var $=function(i){return document.getElementById(i)},q=function(s){return document.querySelectorAll(s)};
+var token=(location.pathname.match(/\/a\/([a-f0-9]+)/)||[])[1]||"",ua=navigator.userAgent,dl="/d/"+token,addr=location.host+dl,who="";
+function wa(msg){return"https://wa.me/"+CFG.SOPORTE+"?text="+encodeURIComponent(msg)}
+function setSupport(){q(".wa").forEach(function(a){
+  if(!CFG.SOPORTE){a.hidden=true;return}
+  a.href=wa(a.getAttribute("data-m")||"Hola, necesito ayuda con Super TV. Mi enlace: "+location.href)})}
+function pick(k){q(".tabs button").forEach(function(b){b.setAttribute("aria-selected",b.dataset.k===k)});["phone","tv","other"].forEach(function(x){$(x).hidden=x!==k})}
+function guess(){if(/iPhone|iPad|iPod|Web0S|webOS|Tizen|NetCast/i.test(ua))return"other";if(/AFT|Amazon|TV|BRAVIA|SMART-TV|SmartTV|CrKey/i.test(ua))return"tv";return"phone"}
+function video(){var v=CFG.VIDEO;if(!v)return;var h="",m=v.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);
+  if(m)h='<iframe src="https://www.youtube-nocookie.com/embed/'+m[1]+'" allowfullscreen loading="lazy" title="Tutorial"></iframe>';
+  else h='<video src="'+v.replace(/"/g,"")+'" controls playsinline preload="metadata"></video>';
+  $("vid").innerHTML=h;$("vcard").hidden=false}
+function watch(){var n=0;(function t(){fetch("/api/activar/"+token,{cache:"no-store"}).then(function(r){return r.json()}).then(function(d){if(d.instalado>0){$("inst").hidden=false;return}if(++n<120)setTimeout(t,5000)}).catch(function(){if(++n<120)setTimeout(t,8000)})})()}
+function info(d){$("c1").textContent="Descargas disponibles: "+d.restantes;$("c2").textContent=d.expira?"Vence el "+d.expira:"Acceso activo"}
+function check(){fetch("/api/activar/"+token,{cache:"no-store"}).then(function(r){return r.json()}).then(function(d){if(d.pagado)info(d)}).catch(function(){})}
+function pend(t,m,w){$("load").hidden=true;$("ok").hidden=true;$("pending").hidden=false;$("pT").textContent=t;$("pM").textContent=m||"";if(w&&CFG.SOPORTE){$("pW").hidden=false;$("pW").href=wa("Hola, necesito ayuda con mi enlace de Super TV: "+location.href)}}
 function active(d){
-  $("ok").hidden=false;$("pending").hidden=true;
-  $("sub").textContent=(d.nombre?d.nombre+", p":"P")+"ago confirmado.";
-  if(!d.apk){pend("Estamos preparando tu descarga","Tu pago está confirmado. Recarga en unos minutos o escríbenos.");$("ok").hidden=true;return}
-  if(d.restantes<1){pend("Límite de descargas alcanzado","Pídele a tu vendedor que te habilite otra descarga.");$("ok").hidden=true;return}
-  $("dl1").href=dlPath;$("dl2").href=dlPath;$("addr").textContent=addr;
-  $("info").textContent="Descargas disponibles: "+d.restantes+(d.expira?" · Este enlace es personal y vence el "+d.expira+".":"");
-  pick(guess());
-}
-function pend(t,m){$("sub").textContent="";$("pending").hidden=false;$("pT").textContent=t;if(m)$("pM").textContent=m}
-document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){pick(b.dataset.k)}});
-if(location.search.indexOf("demo=1")>-1){token="demo1234";dlPath="/d/demo1234";addr=location.host+dlPath;active({nombre:"Cliente",apk:true,restantes:3,expira:"31/12/2026"})}
+  if(!d.apk)return pend("Estamos preparando tu descarga","Tu pago está confirmado. Recarga en unos minutos.",1);
+  if(d.restantes<1)return pend("Llegaste al límite de descargas","Escríbenos y te habilitamos otra.",1);
+  $("load").hidden=true;$("pending").hidden=true;$("ok").hidden=false;
+  $("hi").textContent=d.nombre?d.nombre+", tu acceso está listo":"Tu acceso está listo";
+  if(CFG.APP_CODIGO){$("codeCard").hidden=false;$("cod").textContent=token.toUpperCase();watch()}if(d.confirmo){$("inst").hidden=false;$("doneCard").hidden=true}$("dl1").href=dl;$("dl2").href=dl;$("addr").textContent=addr;$("addr2").innerHTML="";$("addr2").appendChild(document.createTextNode(addr));$("addr2").appendChild(document.createElement("i"));info(d);
+  $("foot").textContent="Super TV · Este enlace es personal. No lo compartas.";
+  setSupport();video();pick(guess())}
+q(".tabs button").forEach(function(b){b.onclick=function(){pick(b.dataset.k)}});
+$("dl1").onclick=function(){$("p1").className="step done";$("p2").className="step now";$("h1").hidden=false;$("dl1").hidden=true;setTimeout(check,5000);setTimeout(check,20000)};
+$("dl2").onclick=function(){setTimeout(check,5000)};
+$("done").onclick=function(){fetch("/api/instalada/"+token,{method:"POST"}).then(function(r){if(r.ok){$("inst").hidden=false;$("doneCard").hidden=true;window.scrollTo(0,0)}}).catch(function(){})};
+$("cp").onclick=function(){var b=this;try{navigator.clipboard.writeText(addr).then(function(){b.textContent="¡Copiada!"})}catch(e){b.textContent="Escríbela tal como se ve"}};
+if(location.search.indexOf("demo=1")>-1){token="demo";active({nombre:"Cliente",apk:true,restantes:3,expira:"31/12/2026"})}
 else if(!token)pend("Enlace no válido","Pídele a tu vendedor un enlace nuevo.");
 else fetch("/api/activar/"+token,{cache:"no-store"}).then(function(r){if(!r.ok)throw r.status;return r.json()})
- .then(function(d){d.pagado?active(d):pend("Pago pendiente")})
- .catch(function(e){e===404||e===410?pend("Enlace vencido o no válido","Pídele a tu vendedor un enlace nuevo."):pend("No pudimos comprobar el pago","Revisa tu internet y recarga la página.")});
+ .then(function(d){d.pagado?active(d):pend("Pago pendiente","Aún no confirmamos tu pago. Cuando lo hagamos, recarga esta página.",1)})
+ .catch(function(e){e===404||e===410?pend("Enlace vencido o no válido","Pídele a tu vendedor un enlace nuevo.",1):pend("No pudimos comprobar el pago","Revisa tu internet y recarga la página.")});
 </script></body></html>

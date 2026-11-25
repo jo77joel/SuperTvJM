@@ -4,6 +4,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASS = process.env.ADMIN_PASS || 'cambia-esta-clave';
 const DATA = process.env.DATA_DIR || __dirname;
 const MAX_DESC = parseInt(process.env.MAX_DESCARGAS, 10) || 3;
+const MAX_DISP = parseInt(process.env.MAX_DISPOSITIVOS, 10) || 2;
 const MAX_APK = 500 * 1024 * 1024;
 const DB = path.join(DATA, 'data.json'), APK = path.join(DATA, 'app.apk'), APK_BUN = path.join(__dirname, 'apk', 'app.apk');
 // APK vigente: el más nuevo entre el subido desde el panel y el incluido en el proyecto
@@ -82,7 +83,7 @@ const server = http.createServer(async (req, res) => {
       if (!valid(c)) return send(res, 410, { error: 'vencido' });
       if (!c.pagado) return send(res, 200, { pagado: false });
       const max = c.max || MAX_DESC;
-      return send(res, 200, { pagado: true, nombre: c.nombre, apk: hasApk(), restantes: Math.max(0, max - (c.usos || 0)), expira: c.expira ? new Date(c.expira).toLocaleDateString('es-PE') : '' });
+      return send(res, 200, { pagado: true, nombre: c.nombre, apk: hasApk(), instalado: (c.inst || []).length, confirmo: c.confirmo || 0, restantes: Math.max(0, max - (c.usos || 0)), expira: c.expira ? new Date(c.expira).toLocaleDateString('es-PE') : '' });
     }
     if (/^\/a\/[a-f0-9]+$/.test(p)) return file(res, 'activar.html', 'text/html; charset=utf-8');
 
@@ -95,9 +96,31 @@ const server = http.createServer(async (req, res) => {
       const max = c.max || MAX_DESC, reciente = c.ultimo && Date.now() - c.ultimo < 120000;
       if (req.method === 'GET' && !reciente) {
         if ((c.usos || 0) >= max) return text(res, 403, 'Llegaste al límite de descargas. Pídele a tu vendedor que habilite otra.');
-        c.usos = (c.usos || 0) + 1; c.ultimo = Date.now(); save(db);
+        c.usos = (c.usos || 0) + 1; c.ultimo = Date.now(); const ua = req.headers['user-agent'] || ''; c.disp = /AFT|Amazon/i.test(ua) ? 'Fire TV' : /TV|BRAVIA|SMART/i.test(ua) ? 'TV' : /Android/i.test(ua) ? 'Android' : 'Otro'; save(db);
       }
       return sendApk(req, res, c, db);
+    }
+
+    // ---- La app Super TV confirma que se instaló/activó (y valida su licencia) ----
+    if (p === '/api/app/activar' && req.method === 'POST') {
+      const b = await body(req), db = load(), t = String(b.codigo || '').trim().toLowerCase(), c = db[t];
+      if (!c) return send(res, 404, { error: 'codigo' });
+      if (!valid(c)) return send(res, 410, { error: 'vencido' });
+      if (!c.pagado) return send(res, 402, { error: 'pago' });
+      const id = String(b.id || '').slice(0, 64); if (!id) return send(res, 400, { error: 'id' });
+      c.inst = c.inst || []; let d = c.inst.find(x => x.id === id);
+      if (!d) { if (c.inst.length >= MAX_DISP) return send(res, 403, { error: 'limite' }); d = { id, fecha: Date.now() }; c.inst.push(d); }
+      d.modelo = String(b.modelo || '').slice(0, 40); d.visto = Date.now(); save(db);
+      return send(res, 200, { ok: true, nombre: c.nombre, expira: c.expira });
+    }
+
+    // ---- El cliente avisa desde su página que ya instaló la app (dato declarado por él) ----
+    if ((m = p.match(/^\/api\/instalada\/([a-f0-9]{6,32})$/)) && req.method === 'POST') {
+      await body(req); const db = load(), c = db[m[1]];
+      if (!valid(c)) return send(res, 404, { error: 'no existe' });
+      if (!c.pagado) return send(res, 402, { error: 'pago' });
+      if (!c.confirmo) { const ua = req.headers['user-agent'] || ''; c.confirmo = Date.now(); c.confDisp = /AFT|Amazon/i.test(ua) ? 'Fire TV' : /TV|BRAVIA|SMART/i.test(ua) ? 'TV' : /Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iPhone' : 'Otro'; save(db); }
+      return send(res, 200, { ok: 1 });
     }
 
     // ---- Admin ----
@@ -133,13 +156,14 @@ const server = http.createServer(async (req, res) => {
         return send(res, 200, Object.entries(db).map(([t, c]) => Object.assign({ token: t, maxEf: c.max || MAX_DESC }, c)).sort((a, b) => b.creado - a.creado));
       if (p === '/admin/api/clientes' && req.method === 'POST') {
         const b = await body(req), t = crypto.randomBytes(4).toString('hex'), dias = parseInt(b.dias, 10) || 30;
-        db[t] = { nombre: String(b.nombre || 'Cliente').slice(0, 60), tel: String(b.tel || '').replace(/\D/g, ''), pagado: false, usos: 0, creado: Date.now(), expira: Date.now() + dias * 864e5 };
+        db[t] = { nombre: String(b.nombre || 'Cliente').slice(0, 60), tel: String(b.tel || '').replace(/\D/g, ''), pagado: false, usos: 0, max: (parseInt(b.max, 10) > 0 ? Math.min(parseInt(b.max, 10), 10) : undefined), creado: Date.now(), expira: Date.now() + dias * 864e5 };
         save(db); return send(res, 200, { token: t });
       }
-      if ((m = p.match(/^\/admin\/api\/clientes\/([a-f0-9]+)(\/pagar|\/descarga)?$/)) && db[m[1]]) {
+      if ((m = p.match(/^\/admin\/api\/clientes\/([a-f0-9]+)(\/pagar|\/descarga|\/reset)?$/)) && db[m[1]]) {
         const c = db[m[1]];
         if (m[2] === '/pagar' && req.method === 'POST') { c.pagado = !c.pagado; save(db); return send(res, 200, { ok: 1 }); }
         if (m[2] === '/descarga' && req.method === 'POST') { c.max = (c.max || MAX_DESC) + 1; save(db); return send(res, 200, { ok: 1 }); }
+        if (m[2] === '/reset' && req.method === 'POST') { c.inst = []; save(db); return send(res, 200, { ok: 1 }); }
         if (!m[2] && req.method === 'DELETE') { delete db[m[1]]; save(db); return send(res, 200, { ok: 1 }); }
       }
       return send(res, 404, { error: 'no existe' });
